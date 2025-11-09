@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AI Tools Suite — Plagiarism | AI Detector | Humanizer</title>
+<meta name="description" content="Free Plagiarism Checker, AI Detector, and Humanizer/Rewriter — simple, fast, privacy‑friendly."/>
+<style>
+  :root{ --blue:#1E90FF; --light:#f5faff; --border:#e1ecfb; --text:#222; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:#fff; color:var(--text); }
+  header{ background:var(--blue); color:#fff; padding:28px 16px; text-align:center; }
+  header h1{ margin:0 0 6px; font-size:28px; }
+  header p{ margin:0; opacity:.95; }
+  .container{ max-width:1100px; margin:0 auto; padding:20px; }
+  .grid{ display:grid; gap:16px; grid-template-columns:1fr; }
+  @media (min-width:1000px){ .grid{ grid-template-columns:repeat(3,1fr); } }
+  .card{ background:var(--light); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow:0 2px 10px rgba(0,0,0,.04); }
+  .card h2{ margin:6px 0 10px; color:var(--blue); font-size:18px; }
+  textarea{ width:100%; min-height:200px; background:#fff; border:1px solid var(--border); border-radius:10px; padding:12px; font-size:15px; line-height:1.45; resize:vertical; }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  select, button{ padding:10px 14px; border-radius:8px; border:1px solid var(--border); background:#fff; font-size:14px; }
+  button{ background:var(--blue); color:#fff; border:none; cursor:pointer; }
+  button:disabled{ opacity:.7; cursor:not-allowed; }
+  .result{ margin-top:10px; background:#fff; border:1px solid var(--border); border-radius:10px; padding:12px; white-space:pre-wrap; min-height:60px; }
+  .note{ font-size:12px; color:#666; margin-top:6px; }
+  footer{ text-align:center; color:#666; font-size:13px; padding:20px 10px; margin-top:20px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>AI Tools Suite</h1>
+  <p>Plagiarism Checker • AI Detector • Humanizer/Rewriter</p>
+</header>
+
+<div class="container">
+  <div class="grid">
+    <!-- Rewriter -->
+    <div class="card">
+      <h2>AI Humanizer / Rewriter</h2>
+      <textarea id="rewriteText" placeholder="Yahan text paste karein jise humanize/rewrite karna hai..."></textarea>
+      <div class="row">
+        <select id="tone">
+          <option value="natural" selected>Natural</option>
+          <option value="formal">Formal</option>
+          <option value="casual">Casual</option>
+        </select>
+        <select id="lengthPref">
+          <option value="medium" selected>Length similar</option>
+          <option value="shorter">Make shorter</option>
+          <option value="longer">Make longer</option>
+        </select>
+        <button id="rewriteBtn">Rewrite</button>
+      </div>
+      <div class="note">Tip: Output ko publish se pehle ek baar zaroor review karein.</div>
+      <div id="rewriteResult" class="result"></div>
+    </div>
+
+    <!-- AI Detector -->
+    <div class="card">
+      <h2>AI Detector</h2>
+      <textarea id="detectText" placeholder="Yahan text paste karein jiska AI-likeness check karna hai..."></textarea>
+      <div class="row">
+        <button id="detectBtn">Analyze</button>
+      </div>
+      <div class="note">Note: Heuristic detector hai—100% accurate nahi. Guidance ke liye use karein.</div>
+      <div id="detectResult" class="result"></div>
+    </div>
+
+    <!-- Plagiarism Checker -->
+    <div class="card">
+      <h2>Plagiarism Checker</h2>
+      <textarea id="plagText" placeholder="Yahan 50+ characters ka text paste karein..."></textarea>
+      <div class="row">
+        <button id="plagBtn">Scan</button>
+      </div>
+      <div class="note">Local heuristic scan (web-wide scan ke liye API add ki ja sakti hai).</div>
+      <div id="plagResult" class="result"></div>
+    </div>
+  </div>
+
+  <footer>© 2025 YourBrand — Simple • Fast • Privacy‑friendly</footer>
+</div>
+
+<script>
+async function postJSON(url, body){
+  const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+  return await r.json();
+}
+function setLoading(btn, on){
+  btn.disabled = on;
+  if (on){ btn.dataset._label = btn.textContent; btn.textContent = 'Please wait...'; }
+  else if (btn.dataset._label){ btn.textContent = btn.dataset._label; }
+}
+
+// Rewrite
+document.getElementById('rewriteBtn').addEventListener('click', async (e)=>{
+  const btn = e.target; setLoading(btn,true);
+  const text = document.getElementById('rewriteText').value.trim();
+  const tone = document.getElementById('tone').value;
+  const keepLength = document.getElementById('lengthPref').value;
+  const out = document.getElementById('rewriteResult');
+  out.textContent = '';
+  try{
+    const data = await postJSON('/api/rewrite', { text, tone, keepLength });
+    out.textContent = data.rewritten || data.error || 'No output.';
+  }catch(err){
+    out.textContent = 'Error: ' + err.message;
+  }finally{ setLoading(btn,false); }
+});
+
+// AI Detect
+document.getElementById('detectBtn').addEventListener('click', async (e)=>{
+  const btn = e.target; setLoading(btn,true);
+  const text = document.getElementById('detectText').value.trim();
+  const out = document.getElementById('detectResult');
+  out.textContent = '';
+  try{
+    const data = await postJSON('/api/aidetect', { text });
+    if (data.score !== undefined){
+      out.textContent = `Result: ${data.label}\nAI-likeness score: ${(data.score*100).toFixed(1)}%\n\nDetails:\n- Avg sentence length: ${data.details.avgSentenceLen}\n- Sentence length std: ${data.details.stdSentenceLen}\n- Type-token ratio: ${data.details.ttr}\n- Contractions per sentence: ${data.details.contractionsPerSent}\n- Punctuation variety: ${data.details.punctVar}`;
+    } else {
+      out.textContent = data.error || 'No result.';
+    }
+  }catch(err){
+    out.textContent = 'Error: ' + err.message;
+  }finally{ setLoading(btn,false); }
+});
+
+// Plagiarism
+document.getElementById('plagBtn').addEventListener('click', async (e)=>{
+  const btn = e.target; setLoading(btn,true);
+  const text = document.getElementById('plagText').value.trim();
+  const out = document.getElementById('plagResult');
+  out.textContent = '';
+  try{
+    const data = await postJSON('/api/plagiarism', { text });
+    if (data.uniqueness !== undefined){
+      let str = `Estimated uniqueness: ${data.uniqueness}%\nEstimated overlap: ${data.percentOverlap}%\n`;
+      if (data.matches && data.matches.length){
+        str += `\nPossible matches:\n` + data.matches.map(m => `- ${m.source}: ${m.similarity}% — ${m.sample}`).join('\n');
+      } else {
+        str += `\nNo notable overlaps found in local scan.`;
+      }
+      out.textContent = str;
+    } else {
+      out.textContent = data.error || 'No result.';
+    }
+  }catch(err){
+    out.textContent = 'Error: ' + err.message;
+  }finally{ setLoading(btn,false); }
+});
+</script>
+</body>
+</html>
